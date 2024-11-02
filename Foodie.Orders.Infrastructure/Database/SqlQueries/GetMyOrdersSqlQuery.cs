@@ -54,7 +54,7 @@ namespace Foodie.Orders.Infrastructure.Database.SqlQueries
 
             builder.Select(
                 """
-                o.Id as OrderId, 
+                o.Id as Id, 
                 o.OrderStatus as OrderStatus, 
                 b.Id as BuyerId, 
                 b.Email as BuyerEmail, 
