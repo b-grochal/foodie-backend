@@ -22,7 +22,7 @@ namespace Foodie.Orders.Application.Features.Contractors.DomainEventsHandlers.Co
         {
             var orderToUpdate = await _ordersRepository.GetByIdAsync(contractorVerifiedDomainEvent.OrderId);
             orderToUpdate.SetContractorId(contractorVerifiedDomainEvent.Contractor.Id);
-            await _unitOfWork.CommitChangesAsync();
+            await _unitOfWork.CommitChangesAsync(handlerName: GetType().Name, cancellationToken: cancellationToken);
         }
     }
 }
