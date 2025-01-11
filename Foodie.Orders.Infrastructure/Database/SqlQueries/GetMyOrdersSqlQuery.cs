@@ -43,6 +43,7 @@ namespace Foodie.Orders.Infrastructure.Database.SqlQueries
                 Select /**select**/ 
                 from orders o 
                 /**innerjoin**/ 
+                /**leftjoin**/
                 /**where**/ 
                 /**orderby**/ 
                 offset @offset 
@@ -59,11 +60,13 @@ namespace Foodie.Orders.Infrastructure.Database.SqlQueries
                 b.Id as BuyerId, 
                 b.Email as BuyerEmail, 
                 c.Id as ContractorId, 
-                c.Name as ContractorName
+                c.Name as ContractorName,
+                a.ModificationDate as CreatedDate
                 """);
 
             builder.InnerJoin("Buyers b on o.BuyerId = b.Id");
             builder.InnerJoin("Contractors c on o.ContractorId = c.Id");
+            builder.LeftJoin("Audits a on json_value(a.PrimaryKey, '$.Id') = o.Id and a.Type = 1");
             builder.OrderBy("o.Id desc");
             builder.Where("b.CustomerId = @customerId", new { customerId });
 
@@ -91,7 +94,8 @@ namespace Foodie.Orders.Infrastructure.Database.SqlQueries
                     Id = x.Id,
                     OrderStatus = x.OrderStatus,
                     ContractorId = x.ContractorId,
-                    ContractorName = x.ContractorName
+                    ContractorName = x.ContractorName,
+                    CreatedDate = x.CreatedDate
                 }),
                 OrderStatus = orderStatus,
                 ContractorName = contractorName
@@ -104,6 +108,7 @@ namespace Foodie.Orders.Infrastructure.Database.SqlQueries
             public string OrderStatus { get; set; }
             public int ContractorId { get; set; }
             public string ContractorName { get; set; }
+            public DateTimeOffset CreatedDate { get; set; }
         }
     }
 }

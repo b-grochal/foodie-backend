@@ -16,8 +16,8 @@ namespace Foodie.Orders.Application.Features.Orders.Queries.GetOrders
     public class OrderDto
     {
         public int Id { get; set; }
-        public DateTimeOffset OrderDate { get; set; }
-        public string OrderStatus { get; set; }
+        public DateTimeOffset CreatedDate { get; set; }
+        public string Status { get; set; }
         public int BuyerId { get; set; }
         public string BuyerEmail { get; set; }
         public int ContractorId { get; set; }

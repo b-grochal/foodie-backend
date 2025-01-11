@@ -39,7 +39,8 @@ namespace Foodie.Orders.Infrastructure.Database.SqlQueries
             var selector = builder.AddTemplate("""
                 Select /**select**/ 
                 from orders o 
-                /**innerjoin**/ 
+                /**innerjoin**/
+                /**leftjoin**/
                 /**where**/ 
                 /**orderby**/ 
                 offset @offset 
@@ -54,11 +55,13 @@ namespace Foodie.Orders.Infrastructure.Database.SqlQueries
                     b.Id as BuyerId,
                     b.Email as BuyerEmail, 
                     c.Id as ContractorId, 
-                    c.Name as ContractorName
+                    c.Name as ContractorName,
+                    a.ModificationDate as CreatedDate
                     """);
 
             builder.InnerJoin("Buyers b on o.BuyerId = b.Id");
             builder.InnerJoin("Contractors c on o.ContractorId = c.Id");
+            builder.LeftJoin("Audits a on json_value(a.PrimaryKey, '$.Id') = o.Id and a.Type = 1");
             builder.OrderBy("o.Id desc");
 
             if (buyerEmail != null)
@@ -89,11 +92,12 @@ namespace Foodie.Orders.Infrastructure.Database.SqlQueries
                 Orders = orders.Items.Select(x => new OrderDto
                 {
                     Id = x.Id,
-                    OrderStatus = x.OrderStatus,
+                    Status = x.OrderStatus,
                     BuyerId = x.BuyerId,
                     BuyerEmail = x.BuyerEmail,
                     ContractorId = x.ContractorId,
-                    ContractorName = x.ContractorName
+                    ContractorName = x.ContractorName,
+                    CreatedDate = x.CreatedDate
                 }),
                 BuyerEmail = buyerEmail,
                 OrderStatus = orderStatus,
@@ -109,6 +113,7 @@ namespace Foodie.Orders.Infrastructure.Database.SqlQueries
             public string BuyerEmail { get; set; }
             public int ContractorId { get; set; }
             public string ContractorName { get; set; }
+            public DateTimeOffset CreatedDate { get; set; }
         }
     }
 }
