@@ -25,13 +25,16 @@ namespace Foodie.Orders.Infrastructure.Database.SqlQueries
         public async Task<GetMyOrdersQueryResponse> ExecuteAsync(GetMyOrdersQuery query)
         {
             var selector = PrepareSqlQueryTemplate(query.PageNumber, query.PageSize, query.ApplicationUserId, query.OrderStatus, query.ContractorName);
+            var countQuery = PrepareCountSqlQuery(query.ApplicationUserId, query.OrderStatus, query.ContractorName);
 
             using var dbConnection = _dbConnecionFactory.CreateConnection();
 
             dbConnection.Open();
 
             var orders = await dbConnection.QueryAsync<MyOrderQueryDto>(selector.RawSql, selector.Parameters);
-            return MapSqlQueryResult(orders, query.PageNumber, query.PageSize, query.OrderStatus, query.ContractorName);
+            var totalCount = await dbConnection.ExecuteScalarAsync<int>(countQuery.RawSql, countQuery.Parameters);
+
+            return MapSqlQueryResult(orders, query.PageNumber, query.PageSize, query.OrderStatus, query.ContractorName, totalCount);
         }
 
         private Template PrepareSqlQueryTemplate(int pageNumber, int pageSize, int customerId, string orderStatus, string contractorName)
@@ -66,7 +69,7 @@ namespace Foodie.Orders.Infrastructure.Database.SqlQueries
 
             builder.InnerJoin("Buyers b on o.BuyerId = b.Id");
             builder.InnerJoin("Contractors c on o.ContractorId = c.Id");
-            builder.LeftJoin("Audits a on json_value(a.PrimaryKey, '$.Id') = o.Id and a.Type = 1");
+            builder.LeftJoin("Audits a on json_value(a.PrimaryKey, '$.Id') = o.Id and a.Type = 1 and a.TableName = 'Order'");
             builder.OrderBy("o.Id desc");
             builder.Where("b.CustomerId = @customerId", new { customerId });
 
@@ -79,13 +82,41 @@ namespace Foodie.Orders.Infrastructure.Database.SqlQueries
             return selector;
         }
 
-        private GetMyOrdersQueryResponse MapSqlQueryResult(IEnumerable<MyOrderQueryDto> data, int pageNumber, int pageSize, string orderStatus, string contractorName)
+        private Template PrepareCountSqlQuery(int customerId, string orderStatus, string contractorName)
+        {
+            var builder = new SqlBuilder();
+
+            var countQuery = builder.AddTemplate(
+                """
+                    SELECT COUNT(*)
+                    FROM orders o
+                    /**innerjoin**/
+                    /**where**/
+                    """);
+
+            builder.InnerJoin("Buyers b ON o.BuyerId = b.Id");
+            builder.Where("b.CustomerId = @customerId", new { customerId });
+
+            if (!string.IsNullOrEmpty(orderStatus))
+            {
+                builder.Where("o.OrderStatus = @orderStatus", new { orderStatus });
+            }
+
+            if (!string.IsNullOrEmpty(contractorName))
+            {
+                builder.Where("c.Name LIKE @contractorName", new { contractorName = $"%{contractorName}%" });
+            }
+
+            return countQuery;
+        }
+
+        private GetMyOrdersQueryResponse MapSqlQueryResult(IEnumerable<MyOrderQueryDto> data, int pageNumber, int pageSize, string orderStatus, string contractorName, int totalCount)
         {
             var orders = PagedList<MyOrderQueryDto>.Create(data, pageNumber, pageSize);
 
             return new GetMyOrdersQueryResponse
             {
-                TotalCount = orders.TotalCount,
+                TotalCount = totalCount,
                 PageSize = orders.PageSize,
                 Page = orders.Page,
                 TotalPages = (int)Math.Ceiling(orders.TotalCount / (double)orders.PageSize),
